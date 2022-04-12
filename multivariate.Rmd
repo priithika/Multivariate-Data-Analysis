@@ -1,0 +1,256 @@
+---
+title: "DV DA2"
+author: "Prithika Shakthi"
+date: "4/12/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r cars}
+wine <- read.table("C:/Users/Home/Downloads/wine.data",
+          sep=",")
+summary(wine)
+```
+
+PLOTTING MULTIVARIATE DATA
+
+SCATTER PLOT
+```{r pressure, echo=FALSE}
+
+wine[2:6]
+library("car")
+
+```
+```{r}
+scatterplotMatrix(wine[2:6])
+
+```
+SCATTER PLOT WITH DATA POINTS LABELLED BY GROUP
+```{r}
+ plot(wine$V4, wine$V5)
+```
+PROFILE PLOT
+```{r}
+```
+
+
+```{r}
+makeProfilePlot <- function(mylist,names)
+  {
+     require(RColorBrewer)
+     # find out how many variables we want to include
+     numvariables <- length(mylist)
+     # choose 'numvariables' random colours
+     colours <- brewer.pal(numvariables,"Set1")
+     # find out the minimum and maximum values of the variables:
+     mymin <- 1e+20
+     mymax <- 1e-20
+     for (i in 1:numvariables)
+     {
+        vectori <- mylist[[i]]
+        mini <- min(vectori)
+        maxi <- max(vectori)
+        if (mini < mymin) { mymin <- mini }
+        if (maxi > mymax) { mymax <- maxi }
+     }
+     # plot the variables
+     for (i in 1:numvariables)
+     {
+        vectori <- mylist[[i]]
+        namei <- names[i]
+        colouri <- colours[i]
+        if (i == 1) { plot(vectori,col=colouri,type="l",ylim=c(mymin,mymax)) }
+        else         { points(vectori, col=colouri,type="l")                                     }
+        lastxval <- length(vectori)
+        lastyval <- vectori[length(vectori)]
+        text((lastxval-10),(lastyval),namei,col="black",cex=0.6)
+     }
+}
+```
+```{r}
+library(RColorBrewer)
+names <- c("V2","V3","V4","V5","V6")
+mylist <- list(wine$V2,wine$V3,wine$V4,wine$V5,wine$V6)
+makeProfilePlot(mylist,names)
+```
+CALCULATING SUMMARY STATS 
+```{r}
+sapply(wine[2:14],mean)
+```
+```{r}
+sapply(wine[2:14],sd)
+```
+```{r}
+cultivar2wine <- wine[wine$V1=="2",]
+```
+```{r}
+printMeanAndSdByGroup <- function(variables,groupvariable)
+  {
+     # find the names of the variables
+     variablenames <- c(names(groupvariable),names(as.data.frame(variables)))
+     # within each group, find the mean of each variable
+     groupvariable <- groupvariable[,1] # ensures groupvariable is not a list
+     means <- aggregate(as.matrix(variables) ~ groupvariable, FUN = mean)
+     names(means) <- variablenames
+     print(paste("Means:"))
+     print(means)
+     # within each group, find the standard deviation of each variable:
+     sds <- aggregate(as.matrix(variables) ~ groupvariable, FUN = sd)
+     names(sds) <- variablenames
+     print(paste("Standard deviations:"))
+     print(sds)
+     # within each group, find the number of samples:
+     samplesizes <- aggregate(as.matrix(variables) ~ groupvariable, FUN = length)
+     names(samplesizes) <- variablenames
+     print(paste("Sample sizes:"))
+     print(samplesizes)
+  }
+
+```
+
+
+```{r}
+ printMeanAndSdByGroup(wine[2:14],wine[1])
+
+```
+```{r}
+calcWithinGroupsVariance <- function(variable,groupvariable)
+  {
+     # find out how many values the group variable can take
+     groupvariable2 <- as.factor(groupvariable[[1]])
+     levels <- levels(groupvariable2)
+     numlevels <- length(levels)
+     # get the mean and standard deviation for each group:
+     numtotal <- 0
+     denomtotal <- 0
+     for (i in 1:numlevels)
+     {
+        leveli <- levels[i]
+        levelidata <- variable[groupvariable==leveli,]
+        levelilength <- length(levelidata)
+        # get the standard deviation for group i:
+        sdi <- sd(levelidata)
+        numi <- (levelilength - 1)*(sdi * sdi)
+        denomi <- levelilength
+        numtotal <- numtotal + numi
+        denomtotal <- denomtotal + denomi
+     }
+     # calculate the within-groups variance
+     Vw <- numtotal / (denomtotal - numlevels)
+     return(Vw)
+  }
+```
+
+
+```{r}
+calcWithinGroupsVariance(wine[2],wine[1])
+
+```
+PCA
+```{r}
+standardisedconcentrations <- as.data.frame(scale(wine[2:14])) # standardise the variables
+sapply(standardisedconcentrations,mean)
+sapply(standardisedconcentrations,sd)
+wine.pca <- prcomp(standardisedconcentrations)  
+plot(wine.pca$x[,1],wine.pca$x[,2]) # make a scatterplot
+
+
+```
+```{r}
+summary(wine.pca)
+wine.pca$sdev
+```
+```{r}
+sum((wine.pca$sdev)^2)
+```
+
+SCREEN PLOT
+```{r}
+screeplot(wine.pca, type="lines")
+```
+```{r}
+plot(wine.pca$x[,1],wine.pca$x[,2]) # make a scatterplot
+text(wine.pca$x[,1],wine.pca$x[,2], wine$V1, cex=0.7, pos=4, col="red") # add labels
+
+```
+```{r}
+library("MASS")                                                # load the MASS package
+wine.lda <- lda(wine$V1 ~ wine$V2 + wine$V3 + wine$V4 + wine$V5 + wine$V6 + wine$V7 +
+                            wine$V8 + wine$V9 + wine$V10 + wine$V11 + wine$V12 + wine$V13 +
+                            wine$V14)
+
+```
+```{r}
+wine.lda
+```
+```{r}
+wine.lda$scaling[,1]
+calclda <- function(variables,loadings)
+  {
+     # find the number of samples in the data set
+     as.data.frame(variables)
+     numsamples <- nrow(variables)
+     # make a vector to store the discriminant function
+     ld <- numeric(numsamples)
+     # find the number of variables
+     numvariables <- length(variables)
+     # calculate the value of the discriminant function for each sample
+     for (i in 1:numsamples)
+     {
+        valuei <- 0
+        for (j in 1:numvariables)
+        {
+           valueij <- variables[i,j]
+           loadingj <- loadings[j]
+           valuei <- valuei + (valueij * loadingj)
+        }
+        ld[i] <- valuei
+     }
+     # standardise the discriminant function so that its mean value is 0:
+     ld <- as.data.frame(scale(ld, center=TRUE, scale=FALSE))
+     ld <- ld[[1]]
+     return(ld)
+  }
+```
+```{r}
+calclda(wine[2:14], wine.lda$scaling[,1])
+```
+```{r}
+wine.lda.values <- predict(wine.lda, wine[2:14])
+wine.lda.values$x[,1] # contains the values for the first discriminant function
+(wine.lda$svd)^2
+```
+```{r}
+groupStandardise <- function(variables, groupvariable)
+  {
+     # find out how many variables we have
+     variables <- as.data.frame(variables)
+     numvariables <- length(variables)
+     # find the variable names
+     variablenames <- colnames(variables)
+     # calculate the group-standardised version of each variable
+     for (i in 1:numvariables)
+     {
+        variablei <- variables[i]
+        variablei_name <- variablenames[i]
+        variablei_Vw <- calcWithinGroupsVariance(variablei, groupvariable)
+        variablei_mean <- mean(variablei)
+        variablei_new <- (variablei - variablei_mean)/(sqrt(variablei_Vw))
+        data_length <- nrow(variablei)
+        if (i == 1) { variables_new <- data.frame(row.names=seq(1,data_length)) }
+        variables_new[`variablei_name`] <- variablei_new
+     }
+     return(variables_new)
+  }
+```
+
+```{r}
+ldahist(data = wine.lda.values$x[,1], g=wine$V1)
+```
+```{r}
+ldahist(data = wine.lda.values$x[,2], g=wine$V1)
+```
